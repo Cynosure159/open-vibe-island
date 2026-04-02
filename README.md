@@ -7,52 +7,54 @@
 
 The open-source macOS companion for terminal-native AI coding.
 
-`open-vibe-island` gives coding agents a native home on your Mac: a lightweight island in the notch or top bar where you can see live sessions, approve actions, answer questions, and jump back to the right terminal without breaking flow.
+`open-vibe-island` puts a lightweight control surface in your notch or top bar so you can keep an eye on live coding agents, handle approvals, answer questions, and jump back to the right terminal without breaking flow.
 
-## Why It Exists
+## Why This Product Exists
 
-AI coding workflows should stay local, inspectable, and under your control.
+AI coding is becoming part of the daily development loop, but the surrounding control layer still too often means handing your machine over to a closed-source paid app.
 
-This project exists for people who want the convenience of an agent companion app without handing their machine over to a closed-source paid product.
-
-## What The Product Does
-
-- shows live agent activity in a small native macOS surface
-- brings pending approvals and questions to the front
-- helps you return to the right terminal context quickly
-- keeps the CLI as the primary workflow instead of replacing it
-
-## What Makes It Different
+`open-vibe-island` takes the opposite approach:
 
 - open source
 - local first
-- native macOS
-- built for terminal workflows, not around them
+- native on macOS
+- built to support the terminal workflow, not replace it
 
-## Current Status
+## Who It Is For
 
-`open-vibe-island` is an early preview, but it is already buildable and usable as a real local prototype.
+This is for developers who already live in the terminal and want a better way to work with coding agents on macOS without losing context.
 
-Current focus:
+## What You Get
+
+- a small native island for live agent activity
+- fast visibility into approvals and questions
+- quicker return to the active terminal context
+- a companion experience that stays out of the way until it matters
+
+## Current Product Shape
+
+Right now `open-vibe-island` is focused on one thing: making the Codex-on-macOS workflow feel more native.
+
+Current scope:
 
 - macOS only
 - Codex first
+- live session visibility
 - approval flow
-- session visibility
 - jump-back behavior
 
-## What Works Today
+## Available Today
 
-Today the project can:
+Today the project can already:
 
 - receive Codex hook events locally
-- show session and approval state in the app shell
+- surface session and approval state in the app
 - install and uninstall managed Codex hooks from `~/.codex`
-- record terminal hints for best-effort jump back behavior
+- use terminal hints for best-effort jump back behavior
 
 ## Quick Start
 
-Build and run the app locally:
+Build and run locally:
 
 ```bash
 swift test
@@ -60,7 +62,7 @@ swift build
 open Package.swift
 ```
 
-To connect Codex:
+Connect Codex:
 
 ```toml
 [features]
@@ -81,12 +83,12 @@ swift run VibeIslandSetup uninstall
 
 ## Product Direction
 
-The goal is simple: make AI coding feel more native on macOS.
+The goal is simple: make AI coding feel native on macOS.
 
 That means:
 
+- less context switching
 - less tab hunting
-- less context loss
 - less friction around approvals
 - a faster path back to the active agent session
 
@@ -99,4 +101,4 @@ That means:
 
 ## Contributing
 
-Issues and pull requests are welcome. If you want to help, prefer small focused changes and keep the product experience as the center of gravity.
+Issues and pull requests are welcome. Small focused changes are preferred.
