@@ -327,6 +327,28 @@ struct SessionStateTests {
     }
 
     @Test
+    func codexHookPayloadCarriesSessionLocatorIntoJumpTarget() {
+        let payload = CodexHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .sessionStart,
+            model: "gpt-5-codex",
+            permissionMode: .default,
+            sessionID: "session-1",
+            terminalApp: "iTerm",
+            terminalSessionID: "A6C5F356-DEED-40F7-A787-AB9DADF27AD6",
+            terminalTTY: "/dev/ttys022",
+            terminalTitle: "codex ~/P/vibe-island",
+            transcriptPath: nil
+        )
+
+        let jumpTarget = payload.defaultJumpTarget
+        #expect(jumpTarget.terminalApp == "iTerm")
+        #expect(jumpTarget.terminalSessionID == "A6C5F356-DEED-40F7-A787-AB9DADF27AD6")
+        #expect(jumpTarget.terminalTTY == "/dev/ttys022")
+        #expect(jumpTarget.paneTitle == "codex ~/P/vibe-island")
+    }
+
+    @Test
     func codexHookInstallationManagerRoundTripsInstallAndUninstall() throws {
         let codexDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("vibe-island-tests-\(UUID().uuidString)", isDirectory: true)

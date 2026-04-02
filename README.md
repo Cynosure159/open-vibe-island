@@ -138,8 +138,9 @@ The helper reads the Codex hook payload from `stdin`, forwards it to the app bri
 
 Codex hook ingestion now captures terminal hints from the hook process environment, such as `TERM_PROGRAM`, `ITERM_SESSION_ID`, and Ghostty-specific variables. The island uses those hints to power a best-effort `Jump` action:
 
-- activate the detected terminal app when possible
-- reopen the recorded working directory in that terminal as a fallback
+- store terminal-specific locators such as iTerm session id, Ghostty terminal id, and Terminal tty when available
+- focus the matching iTerm session, Ghostty terminal, or Terminal tab before falling back
+- reopen the recorded working directory in that terminal as the final fallback
 - keep the existing CLI workflow unchanged even when exact pane restoration is not yet available
 
 ## Repository Layout

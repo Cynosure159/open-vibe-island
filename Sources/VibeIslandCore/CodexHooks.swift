@@ -79,6 +79,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
     public var permissionMode: CodexPermissionMode
     public var sessionID: String
     public var terminalApp: String?
+    public var terminalSessionID: String?
+    public var terminalTTY: String?
+    public var terminalTitle: String?
     public var transcriptPath: String?
     public var source: String?
     public var turnID: String?
@@ -97,6 +100,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         case permissionMode = "permission_mode"
         case sessionID = "session_id"
         case terminalApp = "terminal_app"
+        case terminalSessionID = "terminal_session_id"
+        case terminalTTY = "terminal_tty"
+        case terminalTitle = "terminal_title"
         case transcriptPath = "transcript_path"
         case source
         case turnID = "turn_id"
@@ -116,6 +122,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         permissionMode: CodexPermissionMode,
         sessionID: String,
         terminalApp: String? = nil,
+        terminalSessionID: String? = nil,
+        terminalTTY: String? = nil,
+        terminalTitle: String? = nil,
         transcriptPath: String?,
         source: String? = nil,
         turnID: String? = nil,
@@ -133,6 +142,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         self.permissionMode = permissionMode
         self.sessionID = sessionID
         self.terminalApp = terminalApp
+        self.terminalSessionID = terminalSessionID
+        self.terminalTTY = terminalTTY
+        self.terminalTitle = terminalTitle
         self.transcriptPath = transcriptPath
         self.source = source
         self.turnID = turnID
@@ -153,6 +165,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         permissionMode = try container.decodeIfPresent(CodexPermissionMode.self, forKey: .permissionMode) ?? .default
         sessionID = try container.decode(String.self, forKey: .sessionID)
         terminalApp = try container.decodeIfPresent(String.self, forKey: .terminalApp)
+        terminalSessionID = try container.decodeIfPresent(String.self, forKey: .terminalSessionID)
+        terminalTTY = try container.decodeIfPresent(String.self, forKey: .terminalTTY)
+        terminalTitle = try container.decodeIfPresent(String.self, forKey: .terminalTitle)
         transcriptPath = try container.decodeIfPresent(String.self, forKey: .transcriptPath)
         source = try container.decodeIfPresent(String.self, forKey: .source)
         turnID = try container.decodeIfPresent(String.self, forKey: .turnID)
@@ -241,8 +256,10 @@ public extension CodexHookPayload {
         JumpTarget(
             terminalApp: terminalApp ?? "Terminal",
             workspaceName: workspaceName,
-            paneTitle: "Codex \(sessionID.prefix(8))",
-            workingDirectory: cwd
+            paneTitle: terminalTitle ?? "Codex \(sessionID.prefix(8))",
+            workingDirectory: cwd,
+            terminalSessionID: terminalSessionID,
+            terminalTTY: terminalTTY
         )
     }
 
@@ -343,6 +360,23 @@ public extension CodexHookPayload {
             payload.terminalApp = inferTerminalApp(from: environment)
         }
 
+        if payload.terminalTTY == nil {
+            payload.terminalTTY = currentTTY()
+        }
+
+        if let terminalApp = payload.terminalApp {
+            let locator = terminalLocator(for: terminalApp)
+            if payload.terminalSessionID == nil {
+                payload.terminalSessionID = locator.sessionID
+            }
+            if payload.terminalTTY == nil {
+                payload.terminalTTY = locator.tty
+            }
+            if payload.terminalTitle == nil {
+                payload.terminalTitle = locator.title
+            }
+        }
+
         return payload
     }
 
@@ -374,5 +408,110 @@ public extension CodexHookPayload {
         default:
             return nil
         }
+    }
+
+    private func currentTTY() -> String? {
+        commandOutput(executablePath: "/usr/bin/tty", arguments: [])
+    }
+
+    private func terminalLocator(for terminalApp: String) -> (sessionID: String?, tty: String?, title: String?) {
+        let normalized = terminalApp.lowercased()
+
+        if normalized.contains("iterm") {
+            let values = osascriptValues(script: """
+            tell application "iTerm"
+                if not (it is running) then return ""
+                tell current session of current window
+                    return (id as text) & (ASCII character 31) & (tty as text) & (ASCII character 31) & (name as text)
+                end tell
+            end tell
+            """)
+            return (
+                sessionID: values[safe: 0],
+                tty: values[safe: 1],
+                title: values[safe: 2]
+            )
+        }
+
+        if normalized.contains("ghostty") {
+            let values = osascriptValues(script: """
+            tell application "Ghostty"
+                if not (it is running) then return ""
+                tell focused terminal of selected tab of front window
+                    return (id as text) & (ASCII character 31) & (working directory as text) & (ASCII character 31) & (name as text)
+                end tell
+            end tell
+            """)
+            return (
+                sessionID: values[safe: 0],
+                tty: nil,
+                title: values[safe: 2]
+            )
+        }
+
+        if normalized.contains("terminal") {
+            let values = osascriptValues(script: """
+            tell application "Terminal"
+                if not (it is running) then return ""
+                tell selected tab of front window
+                    return (tty as text) & (ASCII character 31) & (custom title as text)
+                end tell
+            end tell
+            """)
+            return (
+                sessionID: nil,
+                tty: values[safe: 0],
+                title: values[safe: 1]
+            )
+        }
+
+        return (nil, nil, nil)
+    }
+
+    private func osascriptValues(script: String) -> [String] {
+        guard let raw = commandOutput(executablePath: "/usr/bin/osascript", arguments: ["-e", script]) else {
+            return []
+        }
+
+        let separator = String(UnicodeScalar(31)!)
+        return raw
+            .components(separatedBy: separator)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    private func commandOutput(executablePath: String, arguments: [String]) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return nil
+        }
+
+        guard process.terminationStatus == 0 else {
+            return nil
+        }
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !output.isEmpty else {
+            return nil
+        }
+
+        return output
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
